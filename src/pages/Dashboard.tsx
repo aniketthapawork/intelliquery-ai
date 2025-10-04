@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
-import { Brain, Send, User, LogOut, Loader2 } from "lucide-react";
+import { Brain, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
+import Header from "@/components/Header";
+import DataTable from "@/components/DataTable";
 
 interface Message {
   sender: "user" | "agent";
@@ -20,16 +21,8 @@ const Dashboard = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-    }
-  }, [navigate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,33 +69,9 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
-
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">IntelliQuery</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Chat Area */}
+      <Header />
       <div className="flex-1 container mx-auto px-6 py-8 flex flex-col max-w-5xl">
         <div className="flex-1 overflow-y-auto space-y-6 mb-6">
           {messages.length === 0 ? (
@@ -128,7 +97,9 @@ const Dashboard = () => {
                       <div className="prose prose-invert max-w-none">
                         <ReactMarkdown>{msg.text}</ReactMarkdown>
                       </div>
-                      {msg.data?.tableData && <DataTable tableData={msg.data.tableData} />}
+                      {msg.data?.tableData?.tableConfig && msg.data?.tableData?.rows && (
+                        <DataTable config={msg.data.tableData.tableConfig} rows={msg.data.tableData.rows} />
+                      )}
                     </div>
                   ) : (
                     <p>{msg.text}</p>
@@ -165,59 +136,6 @@ const Dashboard = () => {
       </div>
     </div>
   );
-};
-
-const DataTable = ({ tableData }: { tableData: any }) => {
-  if (!tableData?.tableConfig?.columns || !tableData?.rows) return null;
-
-  const { columns } = tableData.tableConfig;
-  const { rows } = tableData;
-
-  return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead className="bg-secondary">
-          <tr>
-            {columns.map((col: any, idx: number) => (
-              <th key={idx} className="px-4 py-3 text-left font-semibold">
-                {col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, 10).map((row: any, rowIdx: number) => (
-            <tr key={rowIdx} className="border-t border-border hover:bg-secondary/50">
-              {columns.map((col: any, colIdx: number) => (
-                <td key={colIdx} className="px-4 py-3">
-                  {renderCell(row[col.key], col.renderAs, col.sourceField)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-const renderCell = (value: any, renderAs: string, sourceField?: string) => {
-  if (value === null || value === undefined) return "-";
-
-  switch (renderAs) {
-    case "date":
-      return new Date(value).toLocaleDateString();
-    case "currency":
-      return `$${Number(value).toFixed(2)}`;
-    case "count":
-      return Array.isArray(value) ? `${value.length} items` : value;
-    case "list":
-      return Array.isArray(value)
-        ? value.map((item) => (sourceField ? item[sourceField] : item)).join(", ")
-        : value;
-    default:
-      return String(value);
-  }
 };
 
 export default Dashboard;
